@@ -1,6 +1,6 @@
 {
   "name": "companion",
-  "description": "Complete backend API template using Hono + Chanfana + D1 + Vitest.",
+  "description": "Complete backend API template using Hono + Chanfana + D1 + Vitest with CUA integration.",
   "cloudflare": {
     "label": "Backend OpenAPI Template",
     "products": [
@@ -21,19 +21,47 @@
     "cf-typegen": "wrangler types",
     "deploy": "wrangler deploy",
     "dev": "pnpm seedLocalDb && wrangler dev",
+    "dev:standalone": "tsx src/standalone-server.ts",
     "predeploy": "wrangler d1 migrations apply DB --remote",
     "seedLocalDb": "wrangler d1 migrations apply DB --local",
     "schema": "npx chanfana",
-    "test": "wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts"
+    "test": "wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts",
+    "test:standalone": "npx vitest run --config tests/vitest-standalone.config.mts",
+    "test:integration": "npx vitest run --config tests/vitest-integration.config.mts",
+    "test:all": "npm run test && npm run test:standalone && npm run test:integration",
+    "docker:build": "docker build -t companion-cua .",
+    "docker:run": "docker run -p 8787:8787 -p 3000:3000 --env-file ../.env companion-cua",
+    "docker:compose": "docker-compose up --build",
+    "docker:compose:down": "docker-compose down",
+    "docker:test": "docker-compose up --build --abort-on-container-exit",
+    "build:standalone": "tsc -p tsconfig.standalone.json",
+    "start:standalone": "node dist/standalone-server.js"
   },
   "dependencies": {
+    "@cloudflare/d1": "^1.4.1",
+    "@hono/node-server": "^1.18.2",
+    "axios": "^1.7.9",
     "chanfana": "2.8.1",
+    "cors": "^2.8.5",
+    "discord.js": "^14.18.0",
+    "dotenv": "^17.2.1",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-orm": "^0.44.4",
+    "express": "^5.1.0",
     "hono": "4.8.2",
+    "openai": "^5.12.2",
+    "playwright": "^1.54.2",
+    "selenium-webdriver": "^4.35.0",
     "zod": "3.25.67"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.8.44",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/node": "24.0.4",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
     "typescript": "5.8.3",
     "wrangler": "4.21.x"
   }

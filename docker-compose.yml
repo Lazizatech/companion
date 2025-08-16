@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Main CUA Companion API service
+  companion-api:
+    build: .
+    container_name: companion-api
+    ports:
+      - "8787:8787"
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-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}
+      - PORT=8787
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./.env:/app/.env
+    command: >
+      sh -c "
+        npm run seedLocalDb &&
+        npm run dev:standalone
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # CUA Client for testing
+  companion-client:
+    build: .
+    container_name: companion-client
+    depends_on:
+      companion-api:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://companion-api:8787
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    command: >
+      sh -c "
+        sleep 15 &&
+        npm run test:integration
+      "
+
+  # Development mode with hot reload
+  companion-dev:
+    build: .
+    container_name: companion-dev
+    ports:
+      - "8788:8787"
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - PORT=8787
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: >
+      sh -c "
+        npm run seedLocalDb &&
+        npm run dev
+      "
+    profiles:
+      - dev
+
+networks:
+  default:
+    name: companion-network

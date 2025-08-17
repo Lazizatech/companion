@@ -4,6 +4,8 @@ import { DB } from '../db';
 import { agents, tasks, memory } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import BrowserStreamServer from '../handoff/browser-stream-server';
+import { PersistentChatWidget } from '../chat/persistent-chat-widget';
+import { ChatInjector } from './chat-injector';
 
 /**
  * Unified CUA Engine - Production Ready
@@ -50,7 +52,9 @@ export class UnifiedCUAEngine {
   private config: CUAConfig;
   private isInitialized = false;
   private streamServer: BrowserStreamServer | null = null;
+  private chatWidget: PersistentChatWidget | null = null;
   private currentHandoffSession: string | null = null;
+  private currentChatSession: string | null = null;
 
   constructor(db: DB, agentId: string, config: CUAConfig = {}) {
     this.db = db;
@@ -160,6 +164,18 @@ export class UnifiedCUAEngine {
     // Initialize handoff streaming server
     if (!this.streamServer) {
       this.streamServer = new BrowserStreamServer(3001);
+    }
+    
+    // Initialize persistent chat widget
+    if (!this.chatWidget) {
+      this.chatWidget = new PersistentChatWidget(3002);
+      this.currentChatSession = await this.chatWidget.createChatSession(this.agentId, this.page);
+      
+      // Inject chat widget directly into the browser page
+      await ChatInjector.injectChatWidget(this.page, this.currentChatSession);
+      
+      console.log(`💬 AI Chat Widget injected into browser and ready for real-time communication!`);
+      console.log(`🎨 Chat will appear as floating widget on every page during automation`);
     }
     
     // Add human-like behavior patterns
@@ -495,7 +511,7 @@ Always respond with valid JSON.`
 
     console.log(`🚨 Triggering beautiful handoff for: ${reason}`);
 
-    // Create handoff session with context
+    // Create handoff session with enhanced context for AI communication
     const sessionId = await this.streamServer.createHandoffSession(
       this.page,
       this.browser,
@@ -505,7 +521,21 @@ Always respond with valid JSON.`
         agentId: this.agentId,
         timestamp: new Date().toISOString(),
         url: await this.page.url(),
-        title: await this.page.title()
+        title: await this.page.title(),
+        lastAction: this.lastActionTaken,
+        taskProgress: this.currentTask,
+        aiPersonality: {
+          name: 'CUA Assistant',
+          style: 'helpful and professional',
+          capabilities: [
+            'Real-time page monitoring',
+            'Browser automation',
+            'CAPTCHA detection',
+            'Form filling',
+            'Navigation'
+          ]
+        },
+        communicationChannel: 'integrated_chat'
       }
     );
 
@@ -577,11 +607,30 @@ Always respond with valid JSON.`
     switch (action.action.toLowerCase()) {
       case 'navigate':
         if (!action.target) throw new Error('Navigation target required');
+        
+        // Notify chat about navigation
+        if (this.chatWidget && this.currentChatSession) {
+          this.chatWidget.notifyAutomationUpdate(this.currentChatSession, `Navigating to: ${action.target}`);
+        }
+        
         await this.page.goto(action.target, { waitUntil: 'networkidle' });
-        return { url: action.target, title: await this.page.title() };
+        const title = await this.page.title();
+        
+        // Notify chat about successful navigation
+        if (this.chatWidget && this.currentChatSession) {
+          this.chatWidget.notifyPageChange(this.currentChatSession, action.target, title);
+        }
+        
+        return { url: action.target, title };
         
       case 'click':
         if (!action.target) throw new Error('Click target required');
+        
+        // Notify chat about click action
+        if (this.chatWidget && this.currentChatSession) {
+          this.chatWidget.notifyActionTaken(this.currentChatSession, 'Clicking', action.target);
+        }
+        
         // Human-like click with mouse movement
         try {
           const element = await this.page.locator(action.target).first();

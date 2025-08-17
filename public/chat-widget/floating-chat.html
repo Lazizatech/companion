@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat Assistant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --secondary: #ec4899;
+      --success: #10b981;
+      --danger: #ef4444;
+      --dark: #1f2937;
+      --glass: rgba(255, 255, 255, 0.15);
+      --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Floating Chat Container */
+    .chat-widget {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 380px;
+      height: 500px;
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 1rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 10000;
+      color: white;
+      font-size: 14px;
+    }
+
+    .chat-widget.collapsed {
+      height: 60px;
+      width: 200px;
+    }
+
+    /* Header */
+    .chat-header {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 1rem 1rem 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .chat-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .ai-status {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .chat-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.05);
+    }
+
+    /* Chat Messages */
+    .chat-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-widget.collapsed .chat-content {
+      display: none;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+    }
+
+    /* Message Styles */
+    .message {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      max-width: 100%;
+    }
+
+    .message.human {
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .message.human .message-avatar {
+      background: var(--primary);
+    }
+
+    .message.system .message-avatar {
+      background: var(--secondary);
+    }
+
+    .message-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .message.human .message-content {
+      text-align: right;
+    }
+
+    .message-text {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 0.75rem;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .message.human .message-text {
+      background: var(--primary);
+    }
+
+    .message.system .message-text {
+      background: var(--secondary);
+      font-size: 0.8rem;
+    }
+
+    .message-time {
+      font-size: 0.7rem;
+      opacity: 0.6;
+      margin-top: 0.25rem;
+    }
+
+    /* Typing Indicator */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      opacity: 0.7;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background: white;
+      border-radius: 50%;
+      animation: typing 1.4s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+      0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+      }
+      30% {
+        transform: translateY(-8px);
+        opacity: 1;
+      }
+    }
+
+    /* Input Area */
+    .chat-input-area {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 0 0 1rem 1rem;
+    }
+
+    .input-container {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      color: white;
+      font-size: 0.875rem;
+      resize: none;
+      min-height: 36px;
+      max-height: 100px;
+      font-family: inherit;
+    }
+
+    .chat-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .send-btn {
+      background: var(--primary);
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      background: var(--primary-dark);
+      transform: scale(1.05);
+    }
+
+    .send-btn:active {
+      transform: scale(0.95);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .quick-action {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .quick-action:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Draggable */
+    .chat-widget.dragging {
+      transition: none;
+      user-select: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 500px) {
+      .chat-widget {
+        width: calc(100vw - 40px);
+        height: 400px;
+        bottom: 10px;
+        right: 20px;
+        left: 20px;
+      }
+      
+      .chat-widget.collapsed {
+        width: 180px;
+        left: auto;
+      }
+    }
+
+    /* Connection status */
+    .connection-status {
+      position: absolute;
+      top: -8px;
+      right: 10px;
+      background: var(--success);
+      color: white;
+      padding: 0.125rem 0.5rem;
+      border-radius: 1rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .connection-status.disconnected {
+      background: var(--danger);
+    }
+
+    .connection-status.connecting {
+      background: #f59e0b;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-widget" id="chatWidget">
+    <div class="connection-status" id="connectionStatus">Connected</div>
+    
+    <div class="chat-header" onclick="toggleChat()">
+      <div class="chat-title">
+        <span>🤖</span>
+        <span>AI Assistant</span>
+      </div>
+      <div class="ai-status">
+        <div class="status-dot"></div>
+        <span>Active</span>
+      </div>
+      <div class="chat-controls">
+        <button class="control-btn" onclick="clearChat()" title="Clear chat">🗑️</button>
+        <button class="control-btn" onclick="toggleChat()" title="Minimize">−</button>
+      </div>
+    </div>
+
+    <div class="chat-content">
+      <div class="chat-messages" id="chatMessages">
+        <!-- Messages will be added here -->
+      </div>
+
+      <div class="chat-input-area">
+        <div class="quick-actions">
+          <button class="quick-action" onclick="quickMessage('Where are we?')">📍 Where are we?</button>
+          <button class="quick-action" onclick="quickMessage('What can you see?')">👀 What can you see?</button>
+          <button class="quick-action" onclick="quickMessage('Wait please')">⏸️ Wait</button>
+          <button class="quick-action" onclick="quickMessage('Continue')">▶️ Continue</button>
+        </div>
+        
+        <div class="input-container">
+          <textarea 
+            class="chat-input" 
+            id="chatInput" 
+            placeholder="Guide me in real-time..."
+            rows="1"
+          ></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">→</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="floating-chat.js"></script>
+</body>
+</html>

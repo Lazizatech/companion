@@ -21,6 +21,11 @@ class HandoffClient {
     this.lastMouseMove = 0;
     this.mouseThrottle = 16; // ~60fps for mouse movement
     
+    // AI Chat state
+    this.chatExpanded = true;
+    this.aiTyping = false;
+    this.chatHistory = [];
+    
     this.init();
   }
 
@@ -342,9 +347,138 @@ class HandoffClient {
 
   handleHandoffComplete(data) {
     this.showToast('Handoff completed successfully!', 'success');
-    setTimeout(() => {
-      window.close(); // Or redirect to dashboard
-    }, 2000);
+    
+    // Send completion message to AI
+    this.addAIMessage('Perfect! I can now continue with the task. Thank you for your assistance! 🎉');
+  }
+
+  // AI Chat Methods
+  initializeAIChat() {
+    // Add initial AI context message
+    const reason = document.getElementById('handoffReason').textContent;
+    this.addAIMessage(`I need your help! ${reason}\n\nI've paused my automation and handed control to you. Take your time to solve this, and I'll continue once you're done.`);
+    
+    // Set up chat input handler
+    const chatInput = document.getElementById('chatInput');
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.sendChatMessage();
+      }
+    });
+  }
+
+  addAIMessage(text, isTyping = false) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    if (isTyping) {
+      // Show typing indicator
+      this.showTypingIndicator();
+      // Simulate thinking time
+      setTimeout(() => {
+        this.hideTypingIndicator();
+        this.addAIMessage(text, false);
+      }, 1000 + Math.random() * 2000);
+      return;
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'ai-message';
+    
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.innerHTML = `
+      <div class="message-avatar">🤖</div>
+      <div class="message-content">
+        <div class="message-text">${text}</div>
+        <div class="message-time">${time}</div>
+      </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    this.chatHistory.push({ type: 'ai', text, timestamp: Date.now() });
+  }
+
+  addHumanMessage(text) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'human-message';
+    
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.innerHTML = `
+      <div class="message-avatar">👤</div>
+      <div class="message-content">
+        <div class="message-text">${text}</div>
+        <div class="message-time">${time}</div>
+      </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    this.chatHistory.push({ type: 'human', text, timestamp: Date.now() });
+    
+    // Simulate AI response
+    this.generateAIResponse(text);
+  }
+
+  generateAIResponse(humanMessage) {
+    const lowerMessage = humanMessage.toLowerCase();
+    let response;
+    
+    // Contextual responses based on user input
+    if (lowerMessage.includes('help') || lowerMessage.includes('what') || lowerMessage.includes('how')) {
+      response = "I can see the page content through my vision system. Look for elements like checkboxes, buttons, or text fields that need interaction. Feel free to click around - I'll monitor the changes and resume when ready!";
+    } else if (lowerMessage.includes('done') || lowerMessage.includes('finished') || lowerMessage.includes('complete')) {
+      response = "Excellent! Let me verify the page state. If everything looks good, click the 'Task Completed' button and I'll resume automation from here.";
+    } else if (lowerMessage.includes('captcha') || lowerMessage.includes('verification')) {
+      response = "I see you're working on the verification challenge. Take your time - these can be tricky! I'll wait patiently and continue once you've solved it successfully.";
+    } else if (lowerMessage.includes('stuck') || lowerMessage.includes('error')) {
+      response = "No worries! Sometimes these challenges can be complex. Try refreshing the page if needed, or let me know if you'd like me to navigate to a different approach.";
+    } else {
+      // Generic helpful responses
+      const responses = [
+        "I'm monitoring the page changes in real-time. You're doing great!",
+        "Thanks for the update! I can see you're making progress on the page.",
+        "Perfect! I'm standing by and ready to continue once you're finished.",
+        "I appreciate your help with this! Let me know if you need any context about what I was trying to do."
+      ];
+      response = responses[Math.floor(Math.random() * responses.length)];
+    }
+    
+    this.addAIMessage(response, true);
+  }
+
+  showTypingIndicator() {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing-indicator';
+    typingDiv.id = 'typingIndicator';
+    
+    typingDiv.innerHTML = `
+      <div class="message-avatar">🤖</div>
+      <div class="typing-dots">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+      <span>AI is thinking...</span>
+    `;
+    
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+      typingIndicator.remove();
+    }
   }
 }
 
@@ -386,10 +520,41 @@ const handoffControl = {
   }
 };
 
+// Global chat functions
+function toggleChat() {
+  const container = document.getElementById('aiChatContainer');
+  const button = document.getElementById('chatToggle');
+  
+  if (container.classList.contains('collapsed')) {
+    container.classList.remove('collapsed');
+    button.textContent = '💬';
+    client.chatExpanded = true;
+  } else {
+    container.classList.add('collapsed');
+    button.textContent = '💬';
+    client.chatExpanded = false;
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  
+  if (message) {
+    client.addHumanMessage(message);
+    input.value = '';
+  }
+}
+
 // Initialize client when DOM is ready
 let client;
 document.addEventListener('DOMContentLoaded', () => {
   client = new HandoffClient();
+  
+  // Initialize AI chat after connection
+  setTimeout(() => {
+    client.initializeAIChat();
+  }, 2000);
   
   // Add smooth page transitions
   document.body.style.opacity = '0';

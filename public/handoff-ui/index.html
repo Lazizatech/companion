@@ -387,6 +387,191 @@
       }
     }
 
+    /* AI Chat Styles */
+    .toggle-chat-btn {
+      margin-left: auto;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 0.375rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toggle-chat-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .ai-chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 300px;
+      margin-bottom: 1rem;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .ai-chat-container.collapsed {
+      display: none;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .ai-message, .human-message {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .human-message {
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .human-message .message-avatar {
+      background: var(--primary);
+    }
+
+    .message-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .human-message .message-content {
+      text-align: right;
+    }
+
+    .message-text {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+
+    .human-message .message-text {
+      background: var(--primary);
+    }
+
+    .message-time {
+      font-size: 0.75rem;
+      opacity: 0.6;
+      margin-top: 0.25rem;
+    }
+
+    .chat-input-container {
+      display: flex;
+      padding: 1rem;
+      gap: 0.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      color: white;
+      font-size: 0.875rem;
+    }
+
+    .chat-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .chat-send-btn {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      border: none;
+      border-radius: 0.5rem;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 1.125rem;
+    }
+
+    .chat-send-btn:hover {
+      background: var(--primary-dark);
+      transform: scale(1.05);
+    }
+
+    .chat-send-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      opacity: 0.7;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: typing 1.4s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+      0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+      }
+      30% {
+        transform: translateY(-10px);
+        opacity: 1;
+      }
+    }
+
     /* Responsive */
     @media (max-width: 1024px) {
       .container {
@@ -401,6 +586,10 @@
       
       .card {
         min-width: 300px;
+      }
+
+      .ai-chat-container {
+        height: 200px;
       }
     }
   </style>
@@ -455,9 +644,25 @@
     <div class="sidebar">
       <div class="card">
         <h3 class="card-title">
-          <span>⚠️</span>
-          Handoff Reason
+          <span>🤖</span>
+          AI Assistant
+          <button class="toggle-chat-btn" onclick="toggleChat()" id="chatToggle">💬</button>
         </h3>
+        <div class="ai-chat-container" id="aiChatContainer">
+          <div class="chat-messages" id="chatMessages">
+            <div class="ai-message">
+              <div class="message-avatar">🤖</div>
+              <div class="message-content">
+                <div class="message-text">I've encountered a challenge that requires human assistance. Let me explain what happened...</div>
+                <div class="message-time">Just now</div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-container">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything or give instructions..." />
+            <button class="chat-send-btn" onclick="sendChatMessage()" id="chatSend">→</button>
+          </div>
+        </div>
         <div class="reason-text" id="handoffReason">
           Loading handoff details...
         </div>

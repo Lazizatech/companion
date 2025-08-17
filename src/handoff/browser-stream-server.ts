@@ -7,7 +7,8 @@ import { WebSocketServer } from 'ws';
 import { Page, Browser } from 'playwright';
 import express from 'express';
 import { createServer } from 'http';
-import sharp from 'sharp';
+// Sharp is optional for image optimization
+// import sharp from 'sharp';
 
 interface HandoffSession {
   id: string;
